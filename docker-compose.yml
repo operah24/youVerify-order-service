@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  order_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/mydb
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672
+      - PORT=3000
+    depends_on:
+      - mongo
+      - elasticsearch
+      - rabbitmq
+    ports:
+      - '3000:3000'
+    networks:
+      - my-network
+
+  inventory_service:
+    build:
+      context: ../inventory-service
+      dockerfile: Dockerfile
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/mydb
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672
+      - PORT=3009
+    depends_on:
+      - mongo
+      - rabbitmq
+    ports:
+      - '3009:3009'
+    networks:
+      - my-network
+
+  mongo:
+    image: mongo:5
+    container_name: mongo
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - '27017:27017'
+    networks:
+      - my-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.10
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - '9200:9200'
+    networks:
+      - my-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    networks:
+      - my-network
+
+volumes:
+  mongo_data:
+  es_data:
+
+networks:
+  my-network:
+    driver: bridge
